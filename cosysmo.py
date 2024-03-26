@@ -1,6 +1,21 @@
-def cosysmo(size, cost_factors):
-    return .254 * eaf(cost_factors) *size**1.06
-
+def cosysmo(size_drivers, cost_factors):
+    return .254 * eaf(cost_factors) *total_size(size_drivers)**1.06
+	
+def eaf(ratings_dict):
+    eaf_value = 1.0
+    
+    for cost_factor, rating_values in cost_factors_dict.items():
+        # Get the rating from the ratings_dict or default to 'Nominal' if not provided
+        rating = ratings_dict.get(cost_factor, "Nominal")
+        
+        # Retrieve the effort multiplier for the rating
+        multiplier = rating_values.get(rating, 1.0)  # default to 1.0 if the rating doesn't exist for some reason
+        
+        # Multiply the eaf_value by the multiplier
+        eaf_value *= multiplier
+        
+    return eaf_value
+	
 cost_factors_dict = {
     "Requirements Understanding": {"Very_Low": 1.87, "Low": 1.37, "Nominal": 1.00, "High": 0.77, "Very_High": 0.60},
     "Architecture Understanding": {"Very_Low": 1.64, "Low": 1.28, "Nominal": 1.00, "High": 0.81, "Very_High": 0.65},
@@ -18,17 +33,66 @@ cost_factors_dict = {
     "Tool Support": {"Very_Low": 1.39, "Low": 1.18, "Nominal": 1.00, "High": 0.85, "Very_High": 0.72}
 }
 
-def eaf(ratings_dict):
-    eaf_value = 1.0
+def phase_effort(effort):
+    # Define the effort distribution percentages for each activity
+    activity_percentages = {
+        "Acquisition and Supply": 7/100,
+        "Technical Management": 17/100,
+        "System Design": 30/100,
+        "Product Realization": 15/100,
+        "Technical Evaluation": 31/100
+    }
+    
+    # Calculate the sub-effort for each activity based on its percentage
+    sub_efforts = {activity: effort * percentage for activity, percentage in activity_percentages.items()}
+    
+    # Print the table of the effort outputs
+    print(f"{'Activities':<25} {'Effort':<10}")
+    print("-" * 35)
+    for activity, sub_effort in sub_efforts.items():
+        print(f"{activity:<25} {sub_effort:.2f}")
+    
+    return sub_efforts
+	
+size_weights = {
+    "System Requirements": {
+        "Easy": 0.5,
+        "Nominal": 1.00,
+        "Difficult": 5.0
+    },
+    "Interfaces": {
+        "Easy": 1.1,
+        "Nominal": 2.8,
+        "Difficult": 6.3
+    },
+    "Critical Algorithms": {
+        "Easy": 2.2,
+        "Nominal": 4.1,
+        "Difficult": 11.5
+    },
+    "Operational Scenarios": {
+        "Easy": 6.2,
+        "Nominal": 14.4,
+        "Difficult": 30
+    }
+}
 
-    for cost_factor, rating_values in cost_factors_dict.items():
-        # Get the rating from the ratings_dict or default to 'Nominal' if not provided
-        rating = ratings_dict.get(cost_factor, "Nominal")
+def total_size(driver_counts):
+    total = 0
+    for driver, complexities in driver_counts.items():
+        for complexity, count in complexities.items():
+            total += count * size_weights[driver][complexity]
+    return total
+	
+def compute_effort():
+    size_drivers = {
+        driver: {complexity: float(boxes[driver][complexity].get()) for complexity in complexities}
+        for driver in size_weights
+    }
 
-        # Retrieve the effort multiplier for the rating
-        multiplier = rating_values.get(rating, 1.0)  # default to 1.0 if the rating doesn't exist for some reason
+    cost_factors_ratings = {
+        factor: factor_comboboxes[factor].get()
+        for factor in cost_factors_dict
+    }
 
-        # Multiply the eaf_value by the multiplier
-        eaf_value *= multiplier
-
-    return eaf_value
+    effort = cosysmo(size_drivers, cost_factors_ratings)
